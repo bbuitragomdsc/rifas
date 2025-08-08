@@ -6,7 +6,7 @@ import io
 st.set_page_config(page_title="Rifas María - Tabla de Números", page_icon="🎟️", layout="centered")
 
 # ===== Colores marca =====
-COLOR_DISP = "#FFD60A"    # Amarillo (fondo / disponible)
+COLOR_DISP = "#FFD60A"    # Amarillo (disponible)
 COLOR_VEND = "#E63946"    # Rojo (vendido)
 TEXT_DARK   = "#000000"
 TEXT_LIGHT  = "#FFFFFF"
@@ -25,11 +25,10 @@ st.caption("Selecciona en la lista los números vendidos. La cuadrícula se actu
 # ===== Estado simplificado: UN SOLO widget =====
 nums = [f"{i:02d}" for i in range(100)]
 vendidos = st.multiselect("Números vendidos", options=nums, default=[], placeholder="Ej: 00, 04, 17, 24")
-
 st.metric("Vendidos", len(vendidos))
 
 # ===== Render visual (solo lectura) =====
-# CSS de la cuadrícula: disponibles = borde; vendidos = rojo
+# Disponibles = amarillo; Vendidos = rojo
 st.markdown(f"""
 <style>
 .grid {{
@@ -38,7 +37,8 @@ st.markdown(f"""
 }}
 .cell {{
   border: 2px solid #222; border-radius: 14px; padding: 10px 0;
-  text-align:center; font-weight:800; background: transparent; color: {TEXT_DARK};
+  text-align:center; font-weight:800;
+  background: {COLOR_DISP}; color: {TEXT_DARK};
 }}
 .cell.vendido {{
   background: {COLOR_VEND}; color: {TEXT_LIGHT};
@@ -55,7 +55,7 @@ for i in range(100):
 html.append("</div>")
 st.markdown("".join(html), unsafe_allow_html=True)
 
-# ===== Generar PNG idéntico al estilo “bonito” =====
+# ===== Generar PNG bonito (centrado, sin cortes) =====
 def build_image(vendidos_list):
     vendidos_set = set(vendidos_list)
     W, H = 1080, 1580
@@ -152,3 +152,5 @@ st.download_button(
 )
 
 st.caption("© Rifas María")
+
+
