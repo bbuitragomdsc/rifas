@@ -249,7 +249,7 @@ st.html(f"""
   <a id="downloadLink" href="{data_url}" download="{filename}" style="
       background:#374151; color:white; text-decoration:none; border-radius:10px;
       padding:10px 14px; font-weight:700;">
-    ⬇️ Descargar (fallback)
+    ⬇️ Descargar
   </a>
 </div>
 <script>
@@ -281,6 +281,7 @@ document.getElementById("shareBtn").addEventListener("click", shareImage);
 """)
 
 st.caption("© Rifas María")
+
 
 
 
