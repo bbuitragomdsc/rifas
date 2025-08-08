@@ -12,7 +12,7 @@ FILE_PREFIX = "rifa_blue"                   # prefijo del PNG
 st.set_page_config(page_title=f"{BRAND_NAME} - Tabla de Números", page_icon="🎟️", layout="centered")
 
 # ===== Colores (azul periquito como disponible) =====
-COLOR_DISP = "#6BB6E0"     # Azul periquito (disponible)
+COLOR_DISP = "#4A97C2"     # Azul periquito (disponible)
 COLOR_VEND = "#E63946"     # Rojo (vendido)
 TEXT_DARK   = "#000000"
 TEXT_LIGHT  = "#FFFFFF"
@@ -145,7 +145,7 @@ def build_image(vendidos_list, titulo):
     W, H = 1080, 1580
     margin = 60
 
-    BLUE = (107, 182, 224)  # RGB del azul periquito
+    BLUE = (74, 151, 194)  # RGB del azul periquito
 
     img = Image.new("RGB", (W, H), BLUE)  # fondo azul
     draw = ImageDraw.Draw(img)
@@ -237,6 +237,7 @@ st.download_button(
 )
 
 st.caption(f"© {BRAND_NAME}")
+
 
 
 
