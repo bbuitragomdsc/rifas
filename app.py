@@ -3,17 +3,21 @@ from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 import io
 
-st.set_page_config(page_title="Rifas María - Tabla de Números", page_icon="🎟️", layout="centered")
+# ======= Marca (edita aquí si cambias nombre/logo) =======
+BRAND_NAME = "Rifas Blue"
+LOGO_PATH  = "assets/logo_rifas_blue.png"   # periquito azul
+FILE_PREFIX = "rifa_blue"                   # prefijo del PNG
+# =========================================================
 
-# ===== Colores marca =====
-COLOR_DISP = "#FFD60A"    # Amarillo (disponible)
-COLOR_VEND = "#E63946"    # Rojo (vendido)
+st.set_page_config(page_title=f"{BRAND_NAME} - Tabla de Números", page_icon="🎟️", layout="centered")
+
+# ===== Colores (azul periquito como disponible) =====
+COLOR_DISP = "#6BB6E0"     # Azul periquito (disponible)
+COLOR_VEND = "#E63946"     # Rojo (vendido)
 TEXT_DARK   = "#000000"
 TEXT_LIGHT  = "#FFFFFF"
 
-# =========================
-#  Helpers URL (persistencia sin DB)
-# =========================
+# ===== Helpers URL (persistencia sin DB) =====
 def get_query_params():
     try:
         qp = dict(st.query_params)  # streamlit >= 1.36
@@ -37,22 +41,18 @@ def parse_sold_param(s: str):
             out.append(f"{int(p):02d}")
     return out
 
-# =========================
-#  Header
-# =========================
+# ===== Header =====
 c1, c2, c3 = st.columns([1,3,1])
 with c2:
     try:
-        st.image("assets/logo_rifas_maria.png", width=180)
+        st.image(LOGO_PATH, width=180)
     except Exception:
         pass
 
-st.markdown("<h2 style='text-align:center;'>Tabla de Números - Rifas María</h2>", unsafe_allow_html=True)
+st.markdown(f"<h2 style='text-align:center;'>Tabla de Números - {BRAND_NAME}</h2>", unsafe_allow_html=True)
 st.caption("Selecciona o pega números vendidos. El estado se guarda en el enlace. Descarga la imagen para WhatsApp.")
 
-# =========================
-#  Estado desde URL
-# =========================
+# ===== Estado desde URL =====
 nums = [f"{i:02d}" for i in range(100)]
 qp = get_query_params()
 vendidos_init = [n for n in parse_sold_param(qp.get("sold", "")) if n in nums]
@@ -63,9 +63,7 @@ if "vendidos" not in st.session_state:
 if "rifa" not in st.session_state:
     st.session_state.rifa = rifa_init
 
-# =========================
-#  Controles compactos
-# =========================
+# ===== Controles compactos =====
 st.session_state.rifa = st.text_input("Nombre de la rifa", st.session_state.rifa)
 
 cA, cB, cC = st.columns([2,1,1])
@@ -86,7 +84,6 @@ with st.form("bulk", clear_on_submit=True):
     apply_bulk = st.form_submit_button("✅ Aplicar")
     if apply_bulk and bulk.strip():
         nuevos = [n for n in parse_sold_param(bulk) if n in nums]
-        # unir sin duplicados
         s = set(st.session_state.vendidos)
         s.update(nuevos)
         st.session_state.vendidos = sorted(s)
@@ -101,11 +98,10 @@ with m2:
         set_query_params(rifa=st.session_state.rifa, sold="")
         st.rerun()
 with m3:
-    # Persistir en URL continuamente
     set_query_params(rifa=st.session_state.rifa, sold=",".join(st.session_state.vendidos))
     st.caption("Estado guardado en el enlace.")
 
-# Lista de vendidos colapsable (edición rápida sin scroll largo)
+# Lista de vendidos colapsable
 with st.expander(f"Ver/editar vendidos ({len(st.session_state.vendidos)})", expanded=False):
     if st.session_state.vendidos:
         cols = st.columns(10)
@@ -118,9 +114,7 @@ with st.expander(f"Ver/editar vendidos ({len(st.session_state.vendidos)})", expa
     else:
         st.write("_Sin vendidos por ahora_")
 
-# =========================
-#  Cuadrícula visual (solo lectura)
-# =========================
+# ===== Cuadrícula visual (solo lectura) =====
 st.markdown(f"""
 <style>
 .grid {{
@@ -145,14 +139,15 @@ for i in range(100):
 html.append("</div>")
 st.markdown("".join(html), unsafe_allow_html=True)
 
-# =========================
-#  PNG bonito (centrado, sin cortes)
-# =========================
+# ===== PNG bonito (centrado, sin cortes) =====
 def build_image(vendidos_list, titulo):
     vendidos_set = set(vendidos_list)
     W, H = 1080, 1580
     margin = 60
-    img = Image.new("RGB", (W, H), (255, 214, 10))  # fondo amarillo
+
+    BLUE = (107, 182, 224)  # RGB del azul periquito
+
+    img = Image.new("RGB", (W, H), BLUE)  # fondo azul
     draw = ImageDraw.Draw(img)
 
     def tf(size, bold=False):
@@ -168,7 +163,7 @@ def build_image(vendidos_list, titulo):
     # Logo
     title_y = 30
     try:
-        logo = Image.open("assets/logo_rifas_maria.png").convert("RGBA")
+        logo = Image.open(LOGO_PATH).convert("RGBA")
         r = 240 / logo.width
         logo = logo.resize((int(logo.width*r), int(logo.height*r)))
         img.paste(logo, (int((W - logo.width)//2), 30), logo)
@@ -206,7 +201,7 @@ def build_image(vendidos_list, titulo):
         for j in range(10):
             n = f"{i*10 + j:02d}"
             sold = n in vendidos_set
-            fill = (230,57,70) if sold else (255,214,10)
+            fill = (230,57,70) if sold else BLUE
             text = (255,255,255) if sold else (0,0,0)
             x = int(left + j*(cell + gap))
             y = int(top  + i*(cell + gap))
@@ -220,7 +215,7 @@ def build_image(vendidos_list, titulo):
     # Leyenda
     legend_y = int(top + grid_h + 30)
     draw.rounded_rectangle([left, legend_y, left+30, legend_y+30],
-                           radius=6, fill=(255,214,10), outline=(0,0,0), width=2)
+                           radius=6, fill=BLUE, outline=(0,0,0), width=2)
     draw.text((left+40, legend_y-2), "Disponible", fill=(0,0,0), font=font_small)
     lx = left + 260
     draw.rounded_rectangle([lx, legend_y, lx+30, legend_y+30],
@@ -229,7 +224,7 @@ def build_image(vendidos_list, titulo):
 
     return img
 
-titulo = f"Tabla de Números - {st.session_state.rifa}".strip()
+titulo = f"Tabla de Números - {st.session_state.rifa} ({BRAND_NAME})".strip()
 img = build_image(st.session_state.vendidos, titulo)
 buf = io.BytesIO()
 img.save(buf, format="PNG")
@@ -237,11 +232,12 @@ buf.seek(0)
 st.download_button(
     "📥 Descargar imagen del tablero",
     data=buf,
-    file_name=f"rifa_maria_{datetime.now().date().isoformat()}.png",
+    file_name=f"{FILE_PREFIX}_{datetime.now().date().isoformat()}.png",
     mime="image/png"
 )
 
-st.caption("© Rifas María")
+st.caption(f"© {BRAND_NAME}")
+
 
 
 
