@@ -28,12 +28,11 @@ def set_query_params(**kwargs):
     except Exception:
         st.experimental_set_query_params(**kwargs)
 
-def parse_sold_param(s):
+def parse_sold_param(s: str):
     if not s:
         return []
     out = []
-    for p in s.split(","):
-        p = p.strip()
+    for p in s.replace(",", " ").split():
         if p.isdigit():
             out.append(f"{int(p):02d}")
     return out
@@ -49,13 +48,13 @@ with c2:
         pass
 
 st.markdown("<h2 style='text-align:center;'>Tabla de Números - Rifas María</h2>", unsafe_allow_html=True)
-st.caption("Agrega/quita números vendidos. El estado se guarda en el enlace. Descarga la imagen para WhatsApp.")
+st.caption("Selecciona o pega números vendidos. El estado se guarda en el enlace. Descarga la imagen para WhatsApp.")
 
 # =========================
 #  Estado desde URL
 # =========================
-qp = get_query_params()
 nums = [f"{i:02d}" for i in range(100)]
+qp = get_query_params()
 vendidos_init = [n for n in parse_sold_param(qp.get("sold", "")) if n in nums]
 rifa_init = qp.get("rifa", f"Rifa {datetime.now().date().isoformat()}")
 
@@ -65,48 +64,35 @@ if "rifa" not in st.session_state:
     st.session_state.rifa = rifa_init
 
 # =========================
-#  Barra superior compacta (friendly en móvil)
+#  Controles compactos
 # =========================
 st.session_state.rifa = st.text_input("Nombre de la rifa", st.session_state.rifa)
 
-# Selector 0–9 y 0–9 para armar número + acciones
-cA, cB, cC, cD = st.columns([1,1,1,1])
+cA, cB, cC = st.columns([2,1,1])
 with cA:
-    tens = st.select_slider("Decena", options=list(range(10)), value=0)
+    sel = st.selectbox("Número", options=nums, index=0, help="Busca y elige un número (00–99)")
 with cB:
-    units = st.select_slider("Unidad", options=list(range(10)), value=0)
-num_sel = f"{tens}{units}"
-
-with cC:
     if st.button("➕ Agregar", use_container_width=True):
-        if num_sel not in st.session_state.vendidos:
-            st.session_state.vendidos.append(num_sel)
-with cD:
+        if sel not in st.session_state.vendidos:
+            st.session_state.vendidos.append(sel)
+with cC:
     if st.button("➖ Quitar", use_container_width=True):
-        if num_sel in st.session_state.vendidos:
-            st.session_state.vendidos.remove(num_sel)
+        if sel in st.session_state.vendidos:
+            st.session_state.vendidos.remove(sel)
 
-# Atajos por decenas para marcar rápido
-row1 = st.columns(5)
-for idx, base in enumerate([0, 10, 20, 30, 40]):
-    with row1[idx]:
-        if st.button(f"+ {base:02d}–{base+9:02d}", use_container_width=True):
-            for k in range(base, base+10):
-                n = f"{k:02d}"
-                if n not in st.session_state.vendidos:
-                    st.session_state.vendidos.append(n)
+# Pegar varios a la vez
+with st.form("bulk", clear_on_submit=True):
+    bulk = st.text_input("Agregar varios (separados por coma o espacio)", placeholder="Ej: 00, 04 17 24 33")
+    apply_bulk = st.form_submit_button("✅ Aplicar")
+    if apply_bulk and bulk.strip():
+        nuevos = [n for n in parse_sold_param(bulk) if n in nums]
+        # unir sin duplicados
+        s = set(st.session_state.vendidos)
+        s.update(nuevos)
+        st.session_state.vendidos = sorted(s)
 
-row2 = st.columns(5)
-for idx, base in enumerate([50, 60, 70, 80, 90]):
-    with row2[idx]:
-        if st.button(f"+ {base:02d}–{base+9:02d}", use_container_width=True):
-            for k in range(base, base+10):
-                n = f"{k:02d}"
-                if n not in st.session_state.vendidos:
-                    st.session_state.vendidos.append(n)
-
-# Métricas y acciones rápidas
-m1, m2, m3 = st.columns([1,1,1])
+# Métricas y acciones
+m1, m2, m3 = st.columns([1,1,2])
 with m1:
     st.metric("Vendidos", len(st.session_state.vendidos))
 with m2:
@@ -119,7 +105,7 @@ with m3:
     set_query_params(rifa=st.session_state.rifa, sold=",".join(st.session_state.vendidos))
     st.caption("Estado guardado en el enlace.")
 
-# Lista de vendidos colapsable (evita scroll en móvil)
+# Lista de vendidos colapsable (edición rápida sin scroll largo)
 with st.expander(f"Ver/editar vendidos ({len(st.session_state.vendidos)})", expanded=False):
     if st.session_state.vendidos:
         cols = st.columns(10)
@@ -256,6 +242,8 @@ st.download_button(
 )
 
 st.caption("© Rifas María")
+
+
 
 
 
