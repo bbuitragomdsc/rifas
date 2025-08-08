@@ -2,7 +2,6 @@ import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 import io
-from urllib.parse import urlencode
 
 st.set_page_config(page_title="Rifas María - Tabla de Números", page_icon="🎟️", layout="centered")
 
@@ -12,10 +11,12 @@ COLOR_VEND = "#E63946"    # Rojo (vendido)
 TEXT_DARK   = "#000000"
 TEXT_LIGHT  = "#FFFFFF"
 
-# ===== Helpers URL (persistencia sin DB) =====
+# =========================
+#  Helpers URL (persistencia sin DB)
+# =========================
 def get_query_params():
     try:
-        qp = dict(st.query_params)  # streamlit>=1.36
+        qp = dict(st.query_params)  # streamlit >= 1.36
         return {k: v for k, v in qp.items()}
     except Exception:
         qp = st.experimental_get_query_params()
@@ -37,7 +38,9 @@ def parse_sold_param(s):
             out.append(f"{int(p):02d}")
     return out
 
-# ===== Header =====
+# =========================
+#  Header
+# =========================
 c1, c2, c3 = st.columns([1,3,1])
 with c2:
     try:
@@ -48,7 +51,9 @@ with c2:
 st.markdown("<h2 style='text-align:center;'>Tabla de Números - Rifas María</h2>", unsafe_allow_html=True)
 st.caption("Agrega/quita números vendidos. El estado se guarda en el enlace. Descarga la imagen para WhatsApp.")
 
-# ===== Estado desde URL =====
+# =========================
+#  Estado desde URL
+# =========================
 qp = get_query_params()
 nums = [f"{i:02d}" for i in range(100)]
 vendidos_init = [n for n in parse_sold_param(qp.get("sold", "")) if n in nums]
@@ -59,65 +64,77 @@ if "vendidos" not in st.session_state:
 if "rifa" not in st.session_state:
     st.session_state.rifa = rifa_init
 
-# ===== Controles: nombre de rifa + agregar número =====
+# =========================
+#  Barra superior compacta (friendly en móvil)
+# =========================
 st.session_state.rifa = st.text_input("Nombre de la rifa", st.session_state.rifa)
 
-with st.form("add_form", clear_on_submit=True):
-    col_a, col_b = st.columns([2,1])
-    with col_a:
-        num_raw = st.text_input("Agregar número vendido (00–99)", value="", max_chars=2, placeholder="Ej: 04")
-    with col_b:
-        submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
+# Selector 0–9 y 0–9 para armar número + acciones
+cA, cB, cC, cD = st.columns([1,1,1,1])
+with cA:
+    tens = st.select_slider("Decena", options=list(range(10)), value=0)
+with cB:
+    units = st.select_slider("Unidad", options=list(range(10)), value=0)
+num_sel = f"{tens}{units}"
 
-    if submitted:
-        # normalizar y validar
-        nr = num_raw.strip()
-        if nr.isdigit():
-            nr = f"{int(nr):02d}"
-            if nr not in st.session_state.vendidos:
-                st.session_state.vendidos.append(nr)
-            else:
-                st.info(f"El número {nr} ya estaba marcado como vendido.")
-        else:
-            st.warning("Ingresa un número válido entre 00 y 99.")
+with cC:
+    if st.button("➕ Agregar", use_container_width=True):
+        if num_sel not in st.session_state.vendidos:
+            st.session_state.vendidos.append(num_sel)
+with cD:
+    if st.button("➖ Quitar", use_container_width=True):
+        if num_sel in st.session_state.vendidos:
+            st.session_state.vendidos.remove(num_sel)
 
-# ===== Chips de vendidos con botón para quitar =====
-if st.session_state.vendidos:
-    st.write("**Vendidos:**")
-    chip_cols = st.columns(10)
-    for idx, n in enumerate(sorted(st.session_state.vendidos)):
-        with chip_cols[idx % 10]:
-            with st.form(f"rm_{n}"):
-                st.markdown(
-                    f"<div style='background:{COLOR_VEND};color:{TEXT_LIGHT};"
-                    f"border-radius:12px;padding:6px 10px;text-align:center;font-weight:800;'>"
-                    f"{n}</div>", unsafe_allow_html=True
-                )
-                if st.form_submit_button("✖", use_container_width=True):
-                    st.session_state.vendidos.remove(n)
-                    st.rerun()
-else:
-    st.write("_Sin vendidos por ahora_")
+# Atajos por decenas para marcar rápido
+row1 = st.columns(5)
+for idx, base in enumerate([0, 10, 20, 30, 40]):
+    with row1[idx]:
+        if st.button(f"+ {base:02d}–{base+9:02d}", use_container_width=True):
+            for k in range(base, base+10):
+                n = f"{k:02d}"
+                if n not in st.session_state.vendidos:
+                    st.session_state.vendidos.append(n)
 
-# Métrica y acciones
-a1, a2, a3 = st.columns([1,1,1])
-with a1:
+row2 = st.columns(5)
+for idx, base in enumerate([50, 60, 70, 80, 90]):
+    with row2[idx]:
+        if st.button(f"+ {base:02d}–{base+9:02d}", use_container_width=True):
+            for k in range(base, base+10):
+                n = f"{k:02d}"
+                if n not in st.session_state.vendidos:
+                    st.session_state.vendidos.append(n)
+
+# Métricas y acciones rápidas
+m1, m2, m3 = st.columns([1,1,1])
+with m1:
     st.metric("Vendidos", len(st.session_state.vendidos))
-with a2:
+with m2:
     if st.button("🔄 Reiniciar tablero", use_container_width=True):
         st.session_state.vendidos = []
         set_query_params(rifa=st.session_state.rifa, sold="")
         st.rerun()
-with a3:
-    # link compartible con estado
-    share_url = "?" + urlencode({"rifa": st.session_state.rifa, "sold": ",".join(st.session_state.vendidos)})
-    st.button("🔗 Copiar enlace", use_container_width=True)
-    st.caption(share_url)
+with m3:
+    # Persistir en URL continuamente
+    set_query_params(rifa=st.session_state.rifa, sold=",".join(st.session_state.vendidos))
+    st.caption("Estado guardado en el enlace.")
 
-# Sincronizar a URL
-set_query_params(rifa=st.session_state.rifa, sold=",".join(st.session_state.vendidos))
+# Lista de vendidos colapsable (evita scroll en móvil)
+with st.expander(f"Ver/editar vendidos ({len(st.session_state.vendidos)})", expanded=False):
+    if st.session_state.vendidos:
+        cols = st.columns(10)
+        for idx, n in enumerate(sorted(st.session_state.vendidos)):
+            with cols[idx % 10]:
+                if st.button(f"✖ {n}", key=f"rm_{n}", use_container_width=True):
+                    st.session_state.vendidos.remove(n)
+                    set_query_params(rifa=st.session_state.rifa, sold=",".join(st.session_state.vendidos))
+                    st.rerun()
+    else:
+        st.write("_Sin vendidos por ahora_")
 
-# ===== Cuadrícula visual (lectura) =====
+# =========================
+#  Cuadrícula visual (solo lectura)
+# =========================
 st.markdown(f"""
 <style>
 .grid {{
@@ -142,12 +159,14 @@ for i in range(100):
 html.append("</div>")
 st.markdown("".join(html), unsafe_allow_html=True)
 
-# ===== PNG bonito (centrado) =====
+# =========================
+#  PNG bonito (centrado, sin cortes)
+# =========================
 def build_image(vendidos_list, titulo):
     vendidos_set = set(vendidos_list)
     W, H = 1080, 1580
     margin = 60
-    img = Image.new("RGB", (W, H), (255, 214, 10))
+    img = Image.new("RGB", (W, H), (255, 214, 10))  # fondo amarillo
     draw = ImageDraw.Draw(img)
 
     def tf(size, bold=False):
@@ -160,6 +179,7 @@ def build_image(vendidos_list, titulo):
     font_num   = tf(48, True)
     font_small = tf(34, False)
 
+    # Logo
     title_y = 30
     try:
         logo = Image.open("assets/logo_rifas_maria.png").convert("RGBA")
@@ -170,7 +190,7 @@ def build_image(vendidos_list, titulo):
     except:
         pass
 
-    # auto-fit del título
+    # Título auto-fit
     size = 64
     while True:
         f = tf(size, True)
@@ -181,7 +201,7 @@ def build_image(vendidos_list, titulo):
         size -= 2
     draw.text(((W - t_w)//2, title_y), titulo, fill=(0,0,0), font=font_title)
 
-    # grid centrado
+    # Grid centrado
     top = title_y + 80
     cols = 10
     gap = 16
@@ -191,11 +211,11 @@ def build_image(vendidos_list, titulo):
     left = int((W - real_w)//2)
     grid_h = 10*cell + 9*gap
 
-    # borde guía
+    # Borde guía
     draw.rounded_rectangle([left-12, top-12, left+real_w+12, top+grid_h+12],
                            radius=18, outline=(0,0,0), width=4)
 
-    # celdas
+    # Celdas
     for i in range(10):
         for j in range(10):
             n = f"{i*10 + j:02d}"
@@ -211,7 +231,7 @@ def build_image(vendidos_list, titulo):
             draw.text((int(x + (cell - tw)/2), int(y + (cell - th)/2)),
                       n, fill=text, font=font_num)
 
-    # leyenda
+    # Leyenda
     legend_y = int(top + grid_h + 30)
     draw.rounded_rectangle([left, legend_y, left+30, legend_y+30],
                            radius=6, fill=(255,214,10), outline=(0,0,0), width=2)
@@ -236,6 +256,8 @@ st.download_button(
 )
 
 st.caption("© Rifas María")
+
+
 
 
 
