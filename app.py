@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
-import io, base64
+import io
 
 st.set_page_config(page_title="Rifas María - Tabla de Números", page_icon="🎟️", layout="centered")
 
@@ -48,7 +48,7 @@ with c2:
         pass
 
 st.markdown("<h2 style='text-align:center;'>Tabla de Números - Rifas María</h2>", unsafe_allow_html=True)
-st.caption("Selecciona o pega números vendidos. El estado se guarda en el enlace. Comparte la imagen directo a WhatsApp.")
+st.caption("Selecciona o pega números vendidos. El estado se guarda en el enlace. Descarga la imagen para WhatsApp.")
 
 # =========================
 #  Estado desde URL
@@ -86,6 +86,7 @@ with st.form("bulk", clear_on_submit=True):
     apply_bulk = st.form_submit_button("✅ Aplicar")
     if apply_bulk and bulk.strip():
         nuevos = [n for n in parse_sold_param(bulk) if n in nums]
+        # unir sin duplicados
         s = set(st.session_state.vendidos)
         s.update(nuevos)
         st.session_state.vendidos = sorted(s)
@@ -100,10 +101,11 @@ with m2:
         set_query_params(rifa=st.session_state.rifa, sold="")
         st.rerun()
 with m3:
+    # Persistir en URL continuamente
     set_query_params(rifa=st.session_state.rifa, sold=",".join(st.session_state.vendidos))
     st.caption("Estado guardado en el enlace.")
 
-# Lista de vendidos colapsable
+# Lista de vendidos colapsable (edición rápida sin scroll largo)
 with st.expander(f"Ver/editar vendidos ({len(st.session_state.vendidos)})", expanded=False):
     if st.session_state.vendidos:
         cols = st.columns(10)
@@ -231,56 +233,17 @@ titulo = f"Tabla de Números - {st.session_state.rifa}".strip()
 img = build_image(st.session_state.vendidos, titulo)
 buf = io.BytesIO()
 img.save(buf, format="PNG")
-png_bytes = buf.getvalue()
 buf.seek(0)
-
-# ====== BOTÓN DE COMPARTIR (Web Share API) con fallback a descarga ======
-b64 = base64.b64encode(png_bytes).decode("utf-8")
-data_url = f"data:image/png;base64,{b64}"
-filename = f"rifa_maria_{datetime.now().date().isoformat()}.png"
-
-st.html(f"""
-<div style="display:flex; gap:12px; align-items:center; justify-content:center; margin-top:10px;">
-  <button id="shareBtn" style="
-      background:#25D366; color:white; border:none; border-radius:10px;
-      padding:10px 14px; font-weight:700; cursor:pointer;">
-    📤 Compartir imagen
-  </button>
-  <a id="downloadLink" href="{data_url}" download="{filename}" style="
-      background:#374151; color:white; text-decoration:none; border-radius:10px;
-      padding:10px 14px; font-weight:700;">
-    ⬇️ Descargar
-  </a>
-</div>
-<script>
-async function shareImage() {{
-  try {{
-    const res = await fetch("{data_url}");
-    const blob = await res.blob();
-    const file = new File([blob], "{filename}", {{ type: "image/png" }});
-
-    if (navigator.canShare && navigator.canShare({{ files: [file] }})) {{
-      await navigator.share({{
-        files: [file],
-        title: "Rifas María",
-        text: "{titulo}"
-      }});
-    }} else {{
-      // Fallback: dispara descarga y explica
-      document.getElementById('downloadLink').click();
-      alert("Tu navegador no permite compartir directamente. Se descargó la imagen; compártela desde WhatsApp.");
-    }}
-  }} catch (e) {{
-    console.error(e);
-    document.getElementById('downloadLink').click();
-    alert("No se pudo compartir. Se descargó la imagen; envíala desde la galería.");
-  }}
-}}
-document.getElementById("shareBtn").addEventListener("click", shareImage);
-</script>
-""")
+st.download_button(
+    "📥 Descargar imagen del tablero",
+    data=buf,
+    file_name=f"rifa_maria_{datetime.now().date().isoformat()}.png",
+    mime="image/png"
+)
 
 st.caption("© Rifas María")
+
+
 
 
 
